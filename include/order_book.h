@@ -20,7 +20,8 @@ class OrderBook
     private:
     std::map<double, std::list<Order>> bids;
     std::map<double, std::list<Order>> asks;
-    std::unordered_map<uint64_t,std::list<Order>::iterator> orderMap;
+    std::unordered_map<uint64_t,
+    std::list<Order>::iterator> orderMap;
 
 
 
