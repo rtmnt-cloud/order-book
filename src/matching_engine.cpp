@@ -19,9 +19,19 @@ void MatchingEngine::process_order(Order order)
         if ( bestMatch->side == Side::Sell && bestMatch->price > order.price) break;
         if ( bestMatch->side == Side::Buy && bestMatch->price < order.price) break;
 
-
+        unit32_t fillQty = std::min(bestMatch->quantity, order.quantity);
+        // uint64_t buyer_id;
+        // uint64_t seller_id;
+        // uint64_t instrument_id;
+        // double price;
+        // uint32_t quantity;
+        // std::chrono::steady_clock::time_point timestamp;
+        Trade trade = { order.taderId, bestMatch->traderId, order.instrumentId,
+                        bestMatch->price, fillQty,std::chrono::steady_clock::now()} }
+        trades.emplace_back(trade);
         
-    }
+        bestMatch.quantity -= fillQty;
+        order.quantity -= fillQty;
     //delete order if exhausted
 
     if ( bestMatch->quantity == 0)

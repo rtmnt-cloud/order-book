@@ -9,8 +9,8 @@ enum class Side {
 
 struct Order {
     uint64_t id;
-    uint64_t trader_id;
-    uint64_t instrument_id;
+    uint64_t traderId;
+    uint64_t instrumentId;
     Side side;
     double price;   
     uint32_t  quantity;
