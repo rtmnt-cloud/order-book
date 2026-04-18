@@ -38,10 +38,6 @@ bool OrderBook::cancel_order(uint64_t orderId)
 
 }
 
-// Otherwise the logic is correct. 
-// Fix those two, save the file, and then write get_best_bid()
-//  and get_best_ask(). 
-// Those should be quick for you now.
 std::optional<Order> OrderBook:: get_best_bid()
 {
     if(bids.empty())
