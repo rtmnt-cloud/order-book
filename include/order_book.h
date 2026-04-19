@@ -13,7 +13,8 @@ class OrderBook
     void add_order(const Order& order);
     bool cancel_order(uint64_t orderId);
     std::optional<Order> get_best_bid();
-    std::optional<Order> get_best_ask(); 
+    std::optional<Order> get_best_ask();
+    void print_book() const;
 
 
 

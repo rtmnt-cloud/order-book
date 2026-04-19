@@ -1,4 +1,5 @@
 #include "order_book.h"
+#include <iostream>
 // You know the steps:
 
 // Check the order's side
@@ -11,7 +12,7 @@ void OrderBook::add_order(const Order& order)
     auto& book = (order.side == Side::Buy) ? bids : asks;
     auto& list = book[order.price];
     auto it = list.insert(list.end(), order);
-    orderMap[order.id] = it;
+    orderMap[order.orderId] = it;
 
 }
 
@@ -51,4 +52,27 @@ std::optional<Order> OrderBook::get_best_ask()
     return std::nullopt;
     else
     return asks.begin()->second.front();
+}
+
+    // private:
+    // std::map<double, std::list<Order>> bids;
+    // std::map<double, std::list<Order>> asks;
+    // std::unordered_map<uint64_t,
+    // std::list<Order>::iterator> orderMap;
+
+void OrderBook::print_book() const
+{
+    std::cout << "=== BIDS ===\n";
+    for (auto it = bids.rbegin(); it != bids.rend(); ++it) {
+        uint32_t total = 0;
+        for (const auto& o : it->second) total += o.quantity;
+        std::cout << "  price=" << it->first << " qty=" << total << " orders=" << it->second.size() << "\n";
+    }
+
+    std::cout << "=== ASKS ===\n";
+    for (const auto& [price, list] : asks) {
+        uint32_t total = 0;
+        for (const auto& o : list) total += o.quantity;
+        std::cout << "  price=" << price << " qty=" << total << " orders=" << list.size() << "\n";
+    }
 }

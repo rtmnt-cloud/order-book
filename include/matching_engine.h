@@ -9,6 +9,7 @@ class MatchingEngine
 public:
     void process_order(Order order);
     const std::vector<Trade>& get_trades() const;
+    void print_book() const;
 
 private:
     OrderBook orderBook;

@@ -17,8 +17,11 @@ void MatchingEngine::process_order(Order order)
         if ( bestMatch->side == Side::Buy && bestMatch->price < order.price) break;
 
         uint32_t fillQty = std::min(bestMatch->quantity, order.quantity);
-        Trade trade = { order.traderId, bestMatch->traderId, order.instrumentId,
-                        bestMatch->price, fillQty, std::chrono::steady_clock::now()};
+        Trade trade = {
+            (order.side == Side::Buy)  ? order.traderId : bestMatch->traderId,
+            (order.side == Side::Sell) ? order.traderId : bestMatch->traderId,
+            order.instrumentId, bestMatch->price, fillQty, std::chrono::steady_clock::now()
+        };
         trades.emplace_back(trade);
         
         //delete resting order
@@ -46,4 +49,9 @@ void MatchingEngine::process_order(Order order)
 const std::vector<Trade>& MatchingEngine::get_trades() const
 {
     return trades;
+}
+
+void MatchingEngine::print_book() const
+{
+    orderBook.print_book();
 }
