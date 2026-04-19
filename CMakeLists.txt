@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Main executable ---
-add_executable(order_book src/main.cpp src/order_book.cpp src/matching_engine.cpp)
+add_executable(order_book src/main.cpp src/order_book.cpp src/matching_engine.cpp src/memory_pool.cpp)
 target_include_directories(order_book PRIVATE include)
 
 # --- Google Test ---
@@ -23,10 +23,11 @@ add_executable(tests
     tests/test_matching_engine.cpp
     src/order_book.cpp
     src/matching_engine.cpp
+    src/memory_pool.cpp
 )
 target_include_directories(tests PRIVATE include)
 target_link_libraries(tests GTest::gtest_main)
 
 # --- Benchmark binary ---
-add_executable(benchmark src/benchmark.cpp src/order_book.cpp src/matching_engine.cpp)
+add_executable(benchmark src/benchmark.cpp src/order_book.cpp src/matching_engine.cpp src/memory_pool.cpp)
 target_include_directories(benchmark PRIVATE include)
