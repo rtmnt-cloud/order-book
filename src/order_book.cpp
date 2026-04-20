@@ -43,22 +43,29 @@
 void OrderBook::add_order(Order order)
 {
     auto& book = (order.side == Side::Buy) ? bids : asks;
-    Order* slot = pool.allocate();
-    if (!slot) return;
-    uint32_t idx = slot - pool.slots;
-    *slot = order;
-    slot->next = NULL_INDEX;
 
-    auto& level = book[order.price];
+    Order* node = pool.allocate();
+    if (!node) return;
+    uint32_t nodeIdx = node - pool.slots;
+    *node = order;
+    node->next = NULL_INDEX;
+
+auto& level = book[static_cast<uint32_t>(order.price)];
     if (level.head == NULL_INDEX) {
-        slot->prev = NULL_INDEX;
-        level.head = level.tail = idx;
+        node->prev = NULL_INDEX;
+        level.head = level.tail = nodeIdx;
     } else {
-        slot->prev = level.tail;
-        pool.slots[level.tail].next = idx;
-        level.tail = idx;
+        node->prev = level.tail;
+        pool.slots[level.tail].next = nodeIdx;
+        level.tail = nodeIdx;
     }
-    orderMap[order.orderId] = idx;
+    orderMap[order.orderId] = nodeIdx;
+
+    uint32_t priceIdx = static_cast<uint32_t>(order.price);
+    if (order.side == Side::Buy && priceIdx > bestBid)
+        bestBid = priceIdx;
+    if (order.side == Side::Sell && priceIdx < bestAsk)
+        bestAsk = priceIdx;
 }
 
 bool OrderBook::cancel_order(uint64_t orderId)
@@ -70,7 +77,8 @@ bool OrderBook::cancel_order(uint64_t orderId)
     uint32_t idx = it->second;
     Order& order = pool.slots[idx];
     auto& book = (order.side == Side::Buy) ? bids : asks;
-    auto& level = book[order.price];
+    uint32_t priceIdx = static_cast<uint32_t>(order.price);
+    auto& level = book[priceIdx];
 
     if (order.prev != NULL_INDEX)
         pool.slots[order.prev].next = order.next;
@@ -82,8 +90,16 @@ bool OrderBook::cancel_order(uint64_t orderId)
     else
         level.tail = order.prev;
 
-    if (level.head == NULL_INDEX)
-        book.erase(order.price);
+    if (level.head == NULL_INDEX) {
+        level = PriceLevel{};
+        // update best tracker if this level was the best
+        if (order.side == Side::Buy && priceIdx == bestBid) {
+            while (bestBid > 0 && bids[bestBid].head == NULL_INDEX) bestBid--;
+        }
+        if (order.side == Side::Sell && priceIdx == bestAsk) {
+            while (bestAsk < MAX_PRICE_LEVELS - 1 && asks[bestAsk].head == NULL_INDEX) bestAsk++;
+        }
+    }
 
     pool.free(idx);
     orderMap.erase(it);
@@ -92,23 +108,22 @@ bool OrderBook::cancel_order(uint64_t orderId)
 
 std::optional<Order> OrderBook::get_best_bid()
 {
-
-    if (bids.empty()) return std::nullopt;
-    return pool.slots[bids.rbegin()->second.head];
-
+    if (bids[bestBid].head == NULL_INDEX) return std::nullopt;
+    return pool.slots[bids[bestBid].head];
 }
 
 std::optional<Order> OrderBook::get_best_ask()
 {
-    if (asks.empty()) return std::nullopt;
-    return pool.slots[asks.begin()->second.head];
+    if (asks[bestAsk].head == NULL_INDEX) return std::nullopt;
+    return pool.slots[asks[bestAsk].head];
 }
 
 void OrderBook::print_book() const
 {
     std::cout << "=== BIDS ===\n";
-    for (auto it = bids.rbegin(); it != bids.rend(); ++it) {
-        uint32_t idx = it->second.head;
+    for (int i = MAX_PRICE_LEVELS - 1; i >= 0; i--) {
+        if (bids[i].head == NULL_INDEX) continue;
+        uint32_t idx = bids[i].head;
         uint32_t count = 0, total = 0;
         while (idx != NULL_INDEX) {
             const Order& o = pool.slots[idx];
@@ -116,12 +131,13 @@ void OrderBook::print_book() const
             idx = o.next;
             count++;
         }
-        std::cout << "  price=" << it->first << " qty=" << total << " orders=" << count << "\n";
+        std::cout << "  price=" << i << " qty=" << total << " orders=" << count << "\n";
     }
 
     std::cout << "=== ASKS ===\n";
-    for (const auto& [price, level] : asks) {
-        uint32_t idx = level.head;
+    for (uint32_t i = 0; i < MAX_PRICE_LEVELS; i++) {
+        if (asks[i].head == NULL_INDEX) continue;
+        uint32_t idx = asks[i].head;
         uint32_t count = 0, total = 0;
         while (idx != NULL_INDEX) {
             const Order& o = pool.slots[idx];
@@ -129,6 +145,6 @@ void OrderBook::print_book() const
             idx = o.next;
             count++;
         }
-        std::cout << "  price=" << price << " qty=" << total << " orders=" << count << "\n";
+        std::cout << "  price=" << i << " qty=" << total << " orders=" << count << "\n";
     }
 }
