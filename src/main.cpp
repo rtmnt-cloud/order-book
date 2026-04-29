@@ -1,42 +1,49 @@
 #include <iostream>
+#include <thread>
+#include <atomic>
 #include "matching_engine.h"
+#include "spsc_queue.h"
 
 int main() {
+    SPSCQueue queue;
     MatchingEngine engine;
-    // uint64_t orderId;
-    // uint64_t traderId;
-    // uint64_t instrumentId;
-    // Side side;
-    // double price;   
-    // uint32_t  quantity;
-    // std::chrono::steady_clock::time_point timestamp;
-    std::vector<Order> orders = {
-        {1,  101, 1001, Side::Buy,  100.00, 50,  std::chrono::steady_clock::now()},
-        {2,  102, 1001, Side::Buy,   99.00, 30,  std::chrono::steady_clock::now()},
-        {3,  103, 1001, Side::Buy,   98.00, 100, std::chrono::steady_clock::now()},
-        {4,  104, 1001, Side::Sell,  99.00, 40,  std::chrono::steady_clock::now()},
-        // {5,  105, 1001, Side::Sell,  98.50, 20,  std::chrono::steady_clock::now()},
-        // {6,  106, 1001, Side::Buy,  101.00, 200, std::chrono::steady_clock::now()},
-        // {7,  107, 1001, Side::Sell, 100.00, 150, std::chrono::steady_clock::now()},
-        // {8,  108, 1001, Side::Sell,  97.00, 10,  std::chrono::steady_clock::now()},
-        // {9,  109, 1001, Side::Buy,   95.00, 500, std::chrono::steady_clock::now()},
-        // {10, 110, 1001, Side::Sell, 200.00, 100, std::chrono::steady_clock::now()},
-    };
 
-    for (auto& o : orders)
-        engine.process_order(o);
+    const int NUM_ORDERS = 10000;
+    std::atomic<bool> done{false};
+
+    // producer: generate orders and push into queue
+    std::thread producer([&]() {
+        srand(42);
+        for (int i = 0; i < NUM_ORDERS; i++) {
+            Order o;
+            o.orderId      = i;
+            o.traderId     = rand() % 1000;
+            o.instrumentId = 1001;
+            o.side         = (i % 2 == 0) ? Side::Buy : Side::Sell;
+            o.price        = rand() % 100;
+            o.quantity     = rand() % 100 + 1;
+            o.timestamp    = std::chrono::steady_clock::now();
+
+            while (!queue.push(o));  // spin until space available
+        }
+        done.store(true);
+    });
+
+    // consumer: pop orders and process them
+    std::thread consumer([&]() {
+        Order o;
+        while (!done.load() || !queue.empty()) {
+            if (queue.pop(o))
+                engine.process_order(o);
+        }
+    });
+
+    producer.join();
+    consumer.join();
 
     const auto& trades = engine.get_trades();
-    std::cout << "Total trades: " << trades.size() << "\n";
-    for (const auto& t : trades) {
-        std::cout << "  buyer=" << t.buyerId
-                  << " seller=" << t.sellerId
-                  << " price=" << t.price
-                  << " qty=" << t.quantity
-                  << "\n";
-    }
-
-    engine.print_book();
+    std::cout << "Total orders : " << NUM_ORDERS << "\n";
+    std::cout << "Total trades : " << trades.size() << "\n";
 
     return 0;
 }
